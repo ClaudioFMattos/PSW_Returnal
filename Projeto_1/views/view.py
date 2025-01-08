@@ -3,7 +3,7 @@ import __init__
 from models.database import engine
 from models.model import Subscription, Payments
 from sqlmodel import Session, select # type: ignore
-from datetime import date
+from datetime import date, datetime
 
 class SubscriptionService:
     def __init__(self, engine):
@@ -59,8 +59,40 @@ class SubscriptionService:
             total += result.preco
 
         return float(total)
+    
+    def _get_last_12_months_native(self):
+        today = datetime.now()
+        year = today.year
+        month = today.month
+        last_12_months = []
+        for _ in range(12):
+            last_12_months.append((month, year))
+            month -= 1
+            if month == 0:
+                month = 12
+                year -= 1
+        return last_12_months[::-1]
 
-ss = SubscriptionService(engine)
-# subscription = Subscription(empresa= 'Pythonando', site= 'pythonando.com', data_assinatura= date.today(), preco= 37.90)
-# ss.create(subscription)
-print(ss.delete(1))
+    def _get_values_for_month(self, last_12_months):
+        with Session(self.engine) as session:
+            statement = select(Payments)
+            results = session.exec(statement).all()
+
+            value_for_month = []
+            for i in last_12_months:
+                value = 0
+                for result in results:
+                    if result.date.month == i[0] and result.date.year == i[1]:
+                        value += float(result.subscription.preco)
+                value = value_for_month.append(value)
+        return value_for_month
+    
+    def gen_chart(self):
+        last_12_months = self._get_last_12_months_native()
+        values_for_months = self._get_values_for_month(last_12_months)
+        last_12_months = list(map(lambda x: x[0], self._get_last_12_months_native()))
+
+        import matplotlib.pyplot as plt  # type: ignore
+        plt.plot(last_12_months, values_for_months)
+        plt.show()
+        
