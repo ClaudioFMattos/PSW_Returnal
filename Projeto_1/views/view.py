@@ -51,7 +51,7 @@ class SubscriptionService:
 
     def total_value(self):
         with Session(self.engine) as session:
-            statement = select(Subscription)
+            statement = select(Subscription)      
             results = session.exec(statement).all()
 
         total = 0
